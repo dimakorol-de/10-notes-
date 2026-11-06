@@ -4,14 +4,12 @@
  "versionName": "1.0.0",
  "versionCode": 1,
  "minPlatformVersion": 1000,
- "icon": "/common/logo.png",
  "deviceTypeList": ["band", "watch"],
  "config": { 
    "logLevel": "log", 
    "designWidth": 212 
  },
  "features": [
-   { "name": "system.router" },
    { "name": "system.storage" },
    { "name": "system.vibrator" }
  ],
