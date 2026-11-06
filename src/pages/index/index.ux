@@ -1,13 +1,13 @@
 <template>
   <div class="container">
-    <!-- ЭКРАН 1: СТИЛЬНЫЙ МИНИМАЛИСТИЧНЫЙ СПИСОК ЗАМЕТОК -->
+    <!-- ЭКРАН 1: СПИСОК ЗАМЕТОК -->
     <div class="page" if="{{!isEditing}}">
       <div class="header-row">
         <text class="title">Заметки</text>
         <text class="count-badge" if="{{notes.length > 0}}">{{notes.length}}</text>
       </div>
       
-      <!-- ЦЕНТРАЛЬНЫЙ КОНТУРНЫЙ ПЛЮС (Скрывается, когда есть заметки) -->
+      <!-- ЦЕНТРАЛЬНЫЙ ПЛЮС (Если пусто) -->
       <div class="empty-state" if="{{notes.length === 0}}" onclick="startEdit">
         <div class="center-plus-box">
           <text class="center-plus-icon">+</text>
@@ -15,7 +15,7 @@
         <text class="empty-text">Нажмите, чтобы добавить</text>
       </div>
 
-      <!-- СПИСОК ЗАМЕТОК С КОНТУРНЫМ УДАЛЕНИЕМ -->
+      <!-- СПИСОК КАРТОЧЕК -->
       <list class="notes-list" if="{{notes.length > 0}}">
         <block for="{{(index, item) in notes}}">
           <list-item type="note" class="note-card">
@@ -29,7 +29,6 @@
         </block>
       </list>
       
-      <!-- Контурная кнопка добавления внизу -->
       <div class="action-bar" if="{{notes.length > 0}}">
         <input type="button" class="btn-outline-add" value="+ Добавить запись" onclick="startEdit" />
       </div>
@@ -41,23 +40,19 @@
         <text class="preview-text">{{currentText || 'Введите текст заметки...'}}</text>
       </div>
 
-      <!-- НИЗКАЯ КОНТУРНАЯ КЛАВИАТУРА НА ПОЛ-ЭКРАНА -->
       <div class="keyboard-viewport">
         <div class="keyboard-scroll-zone">
           <div class="qwerty-board">
-            <!-- Ряд 1 -->
             <div class="kbd-row">
               <block for="{{char in row1}}">
                 <input type="button" class="key-cell-outline" value="{{char}}" onclick="addChar(char)" />
               </block>
             </div>
-            <!-- Ряд 2 -->
             <div class="kbd-row-center">
               <block for="{{char in row2}}">
                 <input type="button" class="key-cell-outline" value="{{char}}" onclick="addChar(char)" />
               </block>
             </div>
-            <!-- Ряд 3 -->
             <div class="kbd-row-bottom">
               <block for="{{char in row3}}">
                 <input type="button" class="key-cell-outline" value="{{char}}" onclick="addChar(char)" />
@@ -66,7 +61,6 @@
           </div>
         </div>
 
-        <!-- СИСТЕМНЫЙ СТРОГИЙ РЯД -->
         <div class="keyboard-system-row">
           <input type="button" class="sys-btn-outline btn-backspace" value="⌫" onclick="backspace" />
           <input type="button" class="sys-btn-outline btn-spacebar" value="ПРОБЕЛ" onclick="addChar(' ')" />
@@ -80,7 +74,7 @@
 </template>
 
 <script>
-import storage from '@system.storage'
+import file from '@system.file'
 import vibrator from '@system.vibrator'
 
 export default {
@@ -88,28 +82,47 @@ export default {
     notes: [],
     isEditing: false,
     currentText: '',
+    filePath: 'internal://cache/sol_notes_v2.txt',
     row1: ['Й','Ц','У','К','Е','Н','Г','Ш','Щ','З','Х','Ъ','1','2','3','4','5'],
     row2: ['Ф','Ы','В','А','П','Р','О','Л','Д','Ж','Э',',','.','6','7','8','9'],
     row3: ['Я','Ч','С','М','И','Т','Ь','Б','Ю','?','!','-',':','+','=','0']
   },
 
   onInit() {
-    this.loadNotes();
+    this.loadNotesFromFile();
   },
 
-  loadNotes() {
+  // Железное чтение напрямую из текстового файла браслета
+  loadNotesFromFile() {
     const self = this;
-    storage.get({
-      key: 'sol_premium_notes_fixed',
+    file.readText({
+      uri: self.filePath,
       success: function(data) {
-        if (data && data.trim() !== '') {
+        if (data && data.text.trim() !== '') {
           try {
-            // Разворачиваем строку и форсируем обновление интерфейса
-            self.notes = JSON.parse(data);
+            self.notes = JSON.parse(data.text);
           } catch (e) {
             self.notes = [];
           }
         }
+      },
+      fail: function() {
+        self.notes = [];
+      }
+    });
+  },
+
+  // Железная физическая запись файла на чип памяти
+  saveNotesToFile(callback) {
+    const self = this;
+    file.writeText({
+      uri: self.filePath,
+      text: JSON.stringify(self.notes),
+      success: function() {
+        if (callback) callback();
+      },
+      fail: function() {
+        if (callback) callback();
       }
     });
   },
@@ -137,28 +150,15 @@ export default {
     }
   },
 
-  // ИСПРАВЛЕННЫЙ МЕТОД: Добавлена перепривязка массива для мгновенного отображения карточки
   saveNote() {
     const self = this;
     if (self.currentText.trim() !== '') {
       self.vibrate('long');
-      
-      // Добавляем новый текст в массив
       self.notes.push(self.currentText);
+      self.notes = [...self.notes]; // Форсируем моментальный вывод на экран
       
-      // ХИТРОСТЬ: Клонируем массив, чтобы интерфейс Mi Band увидел изменения и сразу вывел карточку на экран
-      self.notes = [...self.notes];
-      
-      // Записываем строковое значение в память чипа
-      storage.set({
-        key: 'sol_premium_notes_fixed',
-        value: JSON.stringify(self.notes),
-        success: function() {
-          self.isEditing = false;
-        },
-        fail: function() {
-          self.isEditing = false;
-        }
+      self.saveNotesToFile(function() {
+        self.isEditing = false;
       });
     } else {
       self.isEditing = false;
@@ -168,15 +168,9 @@ export default {
   deleteNote(index) {
     const self = this;
     self.vibrate('long');
-    
-    // Удаляем элемент и форсируем обновление экрана через деструктуризацию
     self.notes.splice(index, 1);
-    self.notes = [...self.notes];
-    
-    storage.set({
-      key: 'sol_premium_notes_fixed',
-      value: JSON.stringify(self.notes)
-    });
+    self.notes = [...self.notes]; // Убираем карточку с экрана мгновенно
+    self.saveNotesToFile();
   },
 
   vibrate(mode) {
@@ -188,7 +182,6 @@ export default {
 </script>
 
 <style>
-  /* Стили остаются премиальными и контурными */
   .container { flex-direction: column; background-color: #000000; width: 212px; height: 520px; align-items: center; }
   .page { flex-direction: column; width: 212px; height: 520px; padding: 16px 8px; align-items: center; }
   .header-row { flex-direction: row; width: 196px; justify-content: space-between; align-items: center; margin-bottom: 16px; padding: 0 4px; }
