@@ -1,37 +1,59 @@
 <template>
   <div class="container">
-    <!-- ЭКРАН 1: Список заметок -->
+    <!-- ЭКРАН 1: СТИЛЬНЫЙ СПИСОК ЗАМЕТОК (Apple Style) -->
     <div class="page" if="{{!isEditing}}">
-      <text class="title">Заметки</text>
+      <div class="header-row">
+        <text class="title">Заметки</text>
+        <text class="count-badge">{{notes.length}}</text>
+      </div>
+      
       <list class="notes-list">
         <block for="{{(index, item) in notes}}">
-          <list-item type="note" class="note-item">
-            <text class="note-text" onclick="deleteNote(index)">{{item}}</text>
+          <list-item type="note" class="note-card" onclick="deleteNote(index)">
+            <div class="card-decorator"></div>
+            <div class="card-content">
+              <text class="note-text">{{item}}</text>
+              <text class="note-date">Заметка #{{index + 1}} • Удалить ✕</text>
+            </div>
           </list-item>
         </block>
       </list>
-      <input type="button" class="btn-add" value="+ Новая" onclick="startEdit" />
+      
+      <div class="action-bar">
+        <input type="button" class="btn-primary" value="+ Новая запись" onclick="startEdit" />
+      </div>
     </div>
 
-    <!-- ЭКРАН 2: Ввод текста (Оптимизированная клавиатура) -->
+    <!-- ЭКРАН 2: ИНТЕРФЕЙС ВВОДА И КЛАВИАТУРА НА ПОЛ-ЭКРАНА -->
     <div class="page" if="{{isEditing}}">
-      <div class="input-preview">
-        <text class="preview-text">{{currentText || 'Начните ввод...'}}</text>
+      <!-- Поле предпросмотра текста -->
+      <div class="input-preview-box">
+        <text class="preview-text">{{currentText || 'Начните вводить текст...'}}</text>
+        <div class="cursor" if="{{currentText.length > 0}}"></div>
       </div>
 
-      <!-- ЛЕГКАЯ ГОРИЗОНТАЛЬНАЯ ЛЕНТА (Мотается пальцем без сбоев) -->
-      <div class="keyboard-scroll-container">
-        <block for="{{char in keyboardChars}}">
-          <input type="button" class="key-btn" value="{{char}}" onclick="addChar(char)" />
-        </block>
+      <!-- ПОЛНОЦЕННЫЙ БЛОК КЛАВИАТУРЫ (Занимает нижнюю половину экрана) -->
+      <div class="keyboard-viewport">
+        <!-- Двухрядная прокручиваемая лента крупных букв -->
+        <div class="keyboard-scroll-zone">
+          <block for="{{pair in keyboardPairs}}">
+            <div class="kbd-column">
+              <input type="button" class="key-cell" value="{{pair.top}}" onclick="addChar(pair.top)" />
+              <input type="button" class="key-cell" value="{{pair.bottom}}" onclick="addChar(pair.bottom)" />
+            </div>
+          </block>
+        </div>
+
+        <!-- Нижняя панель управления: Пробел и Системные клавиши -->
+        <div class="keyboard-system-row">
+          <input type="button" class="sys-btn btn-backspace" value="⌫" onclick="backspace" />
+          <input type="button" class="sys-btn btn-spacebar" value="П Р О Б Е Л" onclick="addChar(' ')" />
+          <input type="button" class="sys-btn btn-submit" value="⏎" onclick="saveNote" />
+        </div>
       </div>
 
-      <!-- Управляющие кнопки -->
-      <div class="controls-row">
-        <input type="button" class="control-btn btn-back" value="⌫" onclick="backspace" />
-        <input type="button" class="control-btn btn-save" value="OK" onclick="saveNote" />
-        <input type="button" class="control-btn btn-cancel" value="X" onclick="cancelEdit" />
-      </div>
+      <!-- Кнопка Отмены (сверху или снизу экрана) -->
+      <input type="button" class="btn-secondary" value="Отмена" onclick="cancelEdit" />
     </div>
   </div>
 </template>
@@ -45,11 +67,23 @@ export default {
     notes: [],
     isEditing: false,
     currentText: '',
-    // Только русская раскладка, цифры и знаки
-    keyboardChars: [
-      'А','Б','В','Г','Д','Е','Ё','Ж','З','И','Й','К','Л','М','Н','О','П','Р','С','Т','У','Ф','Х','Ц','Ч','Ш','Щ','Ъ','Ы','Ь','Э','Ю','Я',
-      'а','б','в','г','д','е','ё','ж','з','и','й','к','л','м','н','о','п','р','с','т','у','ф','х','ц','ч','ш','щ','ъ','ы','ь','э','ю','я',
-      '1','2','3','4','5','6','7','8','9','0','.',',','?','!','-','+',' '
+    // Буквы разбиты на пары (верхняя/нижняя) для создания красивой двухрядной сетки
+    keyboardPairs: [
+      {top: 'А', bottom: 'а'}, {top: 'Б', bottom: 'б'}, {top: 'В', bottom: 'в'},
+      {top: 'Г', bottom: 'г'}, {top: 'Д', bottom: 'д'}, {top: 'Е', bottom: 'е'},
+      {top: 'Ё', bottom: 'ё'}, {top: 'Ж', bottom: 'ж'}, {top: 'З', bottom: 'з'},
+      {top: 'И', bottom: 'и'}, {top: 'Й', bottom: 'й'}, {top: 'К', bottom: 'к'},
+      {top: 'Л', bottom: 'л'}, {top: 'М', bottom: 'м'}, {top: 'Н', bottom: 'н'},
+      {top: 'О', bottom: 'о'}, {top: 'П', bottom: 'п'}, {top: 'Р', bottom: 'р'},
+      {top: 'С', bottom: 'с'}, {top: 'Т', bottom: 'т'}, {top: 'У', bottom: 'у'},
+      {top: 'Ф', bottom: 'ф'}, {top: 'Х', bottom: 'х'}, {top: 'Ц', bottom: 'ц'},
+      {top: 'Ч', bottom: 'ч'}, {top: 'Ш', bottom: 'ш'}, {top: 'Щ', bottom: 'щ'},
+      {top: 'Ъ', bottom: 'ъ'}, {top: 'Ы', bottom: 'ы'}, {top: 'Ь', bottom: 'ь'},
+      {top: 'Э', bottom: 'э'}, {top: 'Ю', bottom: 'ю'}, {top: 'Я', bottom: 'я'},
+      {top: '1', bottom: '.'}, {top: '2', bottom: ','}, {top: '3', bottom: '?'},
+      {top: '4', bottom: '!'}, {top: '5', bottom: '-'}, {top: '6', bottom: '+'},
+      {top: '7', bottom: '='}, {top: '8', bottom: ':'}, {top: '9', bottom: '('},
+      {top: '0', bottom: ')'}
     ]
   },
 
@@ -60,21 +94,26 @@ export default {
   loadNotes() {
     const self = this;
     storage.get({
-      key: 'user_notes',
+      key: 'secure_notes_data',
       default: '[]',
       success: function(data) {
-        try {
-          self.notes = JSON.parse(data);
-        } catch(e) {
-          self.notes = [];
+        if (data) {
+          try {
+            self.notes = JSON.parse(data);
+          } catch (e) {
+            self.notes = [];
+          }
         }
+      },
+      fail: function() {
+        self.notes = [];
       }
     });
   },
 
-  saveNotesToStorage() {
+  persistData() {
     storage.set({
-      key: 'user_notes',
+      key: 'secure_notes_data',
       value: JSON.stringify(this.notes)
     });
   },
@@ -86,6 +125,7 @@ export default {
   },
 
   cancelEdit() {
+    this.vibrate('short');
     this.isEditing = false;
   },
 
@@ -102,18 +142,18 @@ export default {
   },
 
   saveNote() {
-    this.vibrate('long');
     if (this.currentText.trim() !== '') {
       this.notes.push(this.currentText);
-      this.saveNotesToStorage();
+      this.persistData();
+      this.vibrate('long');
     }
     this.isEditing = false;
   },
 
   deleteNote(index) {
-    this.vibrate('long');
     this.notes.splice(index, 1);
-    this.saveNotesToStorage();
+    this.persistData();
+    this.vibrate('long');
   },
 
   vibrate(mode) {
@@ -125,6 +165,7 @@ export default {
 </script>
 
 <style>
+  /* ПРЕМИАЛЬНЫЕ СТИЛИ ИНТЕРФЕЙСА (Mi Band 10: 212px x 520px) */
   .container {
     flex-direction: column;
     background-color: #000000;
@@ -136,87 +177,176 @@ export default {
     flex-direction: column;
     width: 212px;
     height: 520px;
-    padding: 20px 10px;
+    padding: 16px 8px;
     align-items: center;
+  }
+  
+  /* Хедер списка */
+  .header-row {
+    flex-direction: row;
+    width: 196px;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding: 0 4px;
   }
   .title {
     color: #ffffff;
-    font-size: 24px;
-    margin-bottom: 15px;
+    font-size: 26px;
     font-weight: bold;
   }
+  .count-badge {
+    background-color: #ff9f0a;
+    color: #000000;
+    font-size: 14px;
+    font-weight: bold;
+    padding: 2px 8px;
+    border-radius: 10px;
+  }
+
+  /* Красивые карточки заметок */
   .notes-list {
-    width: 190px;
-    height: 380px;
+    width: 196px;
+    height: 370px;
     flex-direction: column;
   }
-  .note-item {
+  .note-card {
     background-color: #1c1c1e;
-    border-radius: 10px;
-    padding: 12px;
-    margin-bottom: 8px;
-    width: 190px;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    width: 196px;
+    flex-direction: row;
+    overflow: hidden;
+  }
+  .card-decorator {
+    width: 5px;
+    height: 70px;
+    background-color: #ff9f0a;
+  }
+  .card-content {
+    flex-direction: column;
+    padding: 10px 12px;
+    width: 191px;
   }
   .note-text {
     color: #ffffff;
-    font-size: 18px;
+    font-size: 17px;
+    font-weight: 500;
   }
-  .btn-add {
-    width: 180px;
-    height: 45px;
-    background-color: #30d158;
-    color: #ffffff;
-    border-radius: 20px;
-    font-size: 18px;
-    margin-top: 10px;
+  .note-date {
+    color: #8e8e93;
+    font-size: 12px;
+    margin-top: 4px;
   }
-  .input-preview {
-    width: 192px;
-    height: 120px;
+
+  /* Кнопки действий */
+  .action-bar {
+    width: 196px;
+    height: 50px;
+    justify-content: center;
+    margin-top: 6px;
+  }
+  .btn-primary {
+    width: 196px;
+    height: 44px;
+    background-color: #ff9f0a;
+    color: #000000;
+    border-radius: 22px;
+    font-size: 16px;
+    font-weight: bold;
+  }
+  .btn-secondary {
+    width: 196px;
+    height: 34px;
+    background-color: #2c2c2e;
+    color: #ff453a;
+    border-radius: 17px;
+    font-size: 14px;
+    margin-top: 8px;
+  }
+
+  /* Окно предпросмотра текста */
+  .input-preview-box {
+    width: 196px;
+    height: 140px;
     background-color: #1c1c1e;
-    border-radius: 10px;
-    padding: 8px;
-    margin-bottom: 15px;
+    border-radius: 14px;
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 1px solid #2c2c2e;
+    flex-direction: row;
   }
   .preview-text {
     color: #ffffff;
-    font-size: 18px;
+    font-size: 16px;
+    width: 180px;
   }
-  /* Горизонтальная прокрутка через div без использования tabs */
-  .keyboard-scroll-container {
-    width: 192px;
-    height: 80px;
-    background-color: #2c2c2e;
-    border-radius: 10px;
-    margin-bottom: 15px;
+
+  /* КЛАВИАТУРА НА ПОЛ-ЭКРАНА */
+  .keyboard-viewport {
+    width: 196px;
+    height: 250px;
+    background-color: #1c1c1e;
+    border-radius: 16px;
+    padding: 6px;
+    flex-direction: column;
+    border: 1px solid #2c2c2e;
+  }
+  .keyboard-scroll-zone {
+    width: 184px;
+    height: 175px;
     flex-direction: row;
     overflow: scroll;
     scroll-x: true;
-    padding: 10px;
   }
-  .key-btn {
-    width: 45px;
-    height: 60px;
-    background-color: #3a3a3c;
-    color: #ffffff;
+  .kbd-column {
+    flex-direction: column;
+    width: 50px;
+    height: 170px;
     margin-right: 6px;
-    border-radius: 6px;
-    font-size: 22px;
-    flex-shrink: 0;
-  }
-  .controls-row {
-    flex-direction: row;
-    width: 192px;
     justify-content: space-between;
   }
-  .control-btn {
-    width: 58px;
-    height: 45px;
+  .key-cell {
+    width: 50px;
+    height: 80px;
+    background-color: #2c2c2e;
+    color: #ffffff;
+    border-radius: 10px;
+    font-size: 22px;
+    font-weight: 500;
+    flex-shrink: 0;
+  }
+
+  /* Системный ряд: Пробел, Бэкспейс, Энтер */
+  .keyboard-system-row {
+    flex-direction: row;
+    width: 184px;
+    height: 55px;
+    margin-top: 6px;
+    justify-content: space-between;
+  }
+  .sys-btn {
     color: #ffffff;
     border-radius: 10px;
     font-size: 18px;
+    font-weight: bold;
   }
-  .btn-back { background-color: #ff453a; }
-  .btn-save { background-color: #30d158; }
-  .btn-cancel { background-color: #8e8e93; }
+  .btn-spacebar {
+    width: 90px;
+    height: 50px;
+    background-color: #3a3a3c;
+    font-size: 11px;
+    color: #8e8e93;
+  }
+  .btn-backspace {
+    width: 44px;
+    height: 50px;
+    background-color: #ff453a;
+  }
+  .btn-submit {
+    width: 44px;
+    height: 50px;
+    background-color: #30d158;
+    color: #000000;
+  }
 </style>
