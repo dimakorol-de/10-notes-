@@ -7,7 +7,7 @@
         <text class="count-badge" if="{{notes.length > 0}}">{{notes.length}}</text>
       </div>
       
-      <!-- ОДИН БОЛЬШОЙ ПЛЮС ПО СЕРЕДИНЕ (Показывается только если пусто) -->
+      <!-- ОДИН БОЛЬШОЙ ПЛЮС ПО СЕРЕДИНЕ (Если пусто) -->
       <div class="empty-state" if="{{notes.length === 0}}" onclick="startEdit">
         <div class="center-plus-box">
           <text class="center-plus-icon">+</text>
@@ -22,7 +22,6 @@
             <div class="card-body">
               <text class="note-text">{{item}}</text>
             </div>
-            <!-- Контурная кнопка удаления справа -->
             <div class="delete-btn-box" onclick="deleteNote(index)">
               <text class="delete-icon">✕</text>
             </div>
@@ -30,47 +29,40 @@
         </block>
       </list>
       
-      <!-- Нижняя кнопка добавления (Появляется, только когда уже есть заметки) -->
+      <!-- Нижняя кнопка добавления -->
       <div class="action-bar" if="{{notes.length > 0}}">
         <input type="button" class="btn-outline-add" value="+ Добавить запись" onclick="startEdit" />
       </div>
     </div>
 
-    <!-- ЭКРАН 2: ПОЛНОЦЕННАЯ ТЕЛЕФОННАЯ QWERTY КЛАВИАТУРА ЙЦУКЕН -->
+    <!-- ЭКРАН 2: ПОЛНОЦЕННАЯ ТЕЛЕФОННАЯ КЛАВИАТУРА ЙЦУКЕН -->
     <div class="page" if="{{isEditing}}">
-      <!-- Увеличенное поле вывода текста -->
       <div class="input-preview-box">
         <text class="preview-text">{{currentText || 'Введите текст заметки...'}}</text>
       </div>
 
-      <!-- НИЗКОПОСАЖЕННЫЙ КОНТУРНЫЙ КЛАВИАТУРНЫЙ БЛОК -->
+      <!-- НИЗКАЯ КОНТУРНАЯ КЛАВИАТУРА -->
       <div class="keyboard-viewport">
-        
-        <!-- МОНОЛИТНАЯ ТЕЛЕФОННАЯ ПЛАТА С ПЛАВНОЙ МОТКОЙ -->
         <div class="keyboard-scroll-zone">
           <div class="qwerty-board">
-            
             <!-- Ряд 1 -->
             <div class="kbd-row">
               <block for="{{char in row1}}">
                 <input type="button" class="key-cell-outline" value="{{char}}" onclick="addChar(char)" />
               </block>
             </div>
-            
             <!-- Ряд 2 -->
             <div class="kbd-row-center">
               <block for="{{char in row2}}">
                 <input type="button" class="key-cell-outline" value="{{char}}" onclick="addChar(char)" />
               </block>
             </div>
-            
             <!-- Ряд 3 -->
             <div class="kbd-row-bottom">
               <block for="{{char in row3}}">
                 <input type="button" class="key-cell-outline" value="{{char}}" onclick="addChar(char)" />
               </block>
             </div>
-
           </div>
         </div>
 
@@ -105,12 +97,11 @@ export default {
     this.loadNotes();
   },
 
-  // Новая пуленепробиваемая система загрузки данных
+  // Жесткое асинхронное чтение
   loadNotes() {
     const self = this;
     storage.get({
-      key: 'sol_premium_storage_key',
-      default: '',
+      key: 'notes_storage_vela_v1',
       success: function(data) {
         if (data && data.trim() !== '') {
           try {
@@ -118,24 +109,7 @@ export default {
           } catch (e) {
             self.notes = [];
           }
-        } else {
-          self.notes = [];
         }
-      },
-      fail: function() {
-        self.notes = [];
-      }
-    });
-  },
-
-  // Экстренная форсированная запись
-  persistData(callback) {
-    const self = this;
-    storage.set({
-      key: 'sol_premium_storage_key',
-      value: JSON.stringify(self.notes),
-      success: function() {
-        if (callback) callback();
       }
     });
   },
@@ -163,14 +137,27 @@ export default {
     }
   },
 
+  // ИСПРАВЛЕННЫЙ МЕТОД СОХРАНЕНИЯ (С жестким триггером обратного вызова)
   saveNote() {
     const self = this;
     if (self.currentText.trim() !== '') {
-      self.notes.push(self.currentText);
       self.vibrate('long');
-      // Закрываем окно строго после успешной записи на чип памяти
-      self.persistData(function() {
-        self.isEditing = false;
+      
+      // Сначала добавляем запись в локальный массив кода
+      self.notes.push(self.currentText);
+      
+      // Заставляем систему физически записать файл на браслет
+      storage.set({
+        key: 'notes_storage_vela_v1',
+        value: JSON.stringify(self.notes),
+        success: function() {
+          // И ТОЛЬКО ПОСЛЕ УСПЕШНОЙ ЗАПИСИ НА КРИСТАЛЛ закрываем клавиатуру
+          self.isEditing = false;
+        },
+        fail: function() {
+          // В случае осечки принудительно выходим, сохранив массив в ОЗУ
+          self.isEditing = false;
+        }
       });
     } else {
       self.isEditing = false;
@@ -181,7 +168,12 @@ export default {
     const self = this;
     self.vibrate('long');
     self.notes.splice(index, 1);
-    self.persistData();
+    
+    // Синхронизируем удаление с памятью браслета
+    storage.set({
+      key: 'notes_storage_vela_v1',
+      value: JSON.stringify(self.notes)
+    });
   },
 
   vibrate(mode) {
@@ -193,224 +185,37 @@ export default {
 </script>
 
 <style>
-  /* ЧИСТЫЙ КОНТУРНЫЙ PREMIUM ДИЗАЙН (AMOLED BLACK) */
-  .container {
-    flex-direction: column;
-    background-color: #000000;
-    width: 212px;
-    height: 520px;
-    align-items: center;
-  }
-  .page {
-    flex-direction: column;
-    width: 212px;
-    height: 520px;
-    padding: 16px 8px;
-    align-items: center;
-  }
-  .header-row {
-    flex-direction: row;
-    width: 196px;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
-    padding: 0 4px;
-  }
-  .title {
-    color: #ffffff;
-    font-size: 24px;
-    font-weight: bold;
-    letter-spacing: 0.5px;
-  }
-  .count-badge {
-    border: 1px solid #ffffff;
-    color: #ffffff;
-    font-size: 12px;
-    padding: 1px 8px;
-    border-radius: 6px;
-  }
-
-  /* ЦЕНТРАЛЬНЫЙ КОНТУРНЫЙ ПЛЮС (APPLE СТИЛЬ) */
-  .empty-state {
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    width: 196px;
-    height: 380px;
-    margin-top: -10px;
-  }
-  .center-plus-box {
-    width: 80px;
-    height: 80px;
-    border: 1px dashed #ffffff;
-    border-radius: 40px;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 14px;
-  }
-  .center-plus-icon {
-    color: #ffffff;
-    font-size: 42px;
-    font-weight: 300;
-  }
-  .empty-text {
-    color: #8e8e93;
-    font-size: 14px;
-    text-align: center;
-  }
-
-  /* СПИСОК С КОНТУРНЫМИ КАРТОЧКАМИ ВЫСОТОЙ */
-  .notes-list {
-    width: 196px;
-    height: 360px;
-    flex-direction: column;
-  }
-  .note-card {
-    border: 1px solid #2c2c2e;
-    border-radius: 12px;
-    margin-bottom: 10px;
-    width: 196px;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    background-color: transparent;
-  }
-  .card-body {
-    padding: 14px 12px;
-    width: 150px;
-  }
-  /* Увеличенный читаемый текст заметок */
-  .note-text {
-    color: #ffffff;
-    font-size: 18px;
-    font-weight: 400;
-  }
-  .delete-btn-box {
-    width: 44px;
-    height: 50px;
-    align-items: center;
-    justify-content: center;
-    border-left: 1px solid #2c2c2e;
-  }
-  .delete-icon {
-    color: #ff453a;
-    font-size: 16px;
-  }
-
-  /* КОНТУРНЫЕ КНОПКИ УПРАВЛЕНИЯ */
-  .action-bar {
-    width: 196px;
-    height: 46px;
-    margin-top: 12px;
-  }
-  .btn-outline-add {
-    width: 196px;
-    height: 44px;
-    background-color: transparent;
-    border: 1px solid #ffffff;
-    color: #ffffff;
-    border-radius: 10px;
-    font-size: 15px;
-    font-weight: bold;
-  }
-  .btn-outline-cancel {
-    width: 196px;
-    height: 38px;
-    background-color: transparent;
-    border: 1px solid #ff453a;
-    color: #ff453a;
-    border-radius: 8px;
-    font-size: 14px;
-    margin-top: 10px;
-  }
-
-  /* УВЕЛИЧЕННОЕ ПОЛЕ ПРЕДПРОСМОТРА */
-  .input-preview-box {
-    width: 196px;
-    height: 110px;
-    border: 1px solid #2c2c2e;
-    border-radius: 12px;
-    padding: 12px;
-    margin-bottom: 14px;
-    background-color: transparent;
-  }
-  .preview-text {
-    color: #ffffff;
-    font-size: 18px;
-  }
-
-  /* НИЗКАЯ КОНТУРНАЯ КЛАВИАТУРА НА ПОЛ-ЭКРАНА */
-  .keyboard-viewport {
-    width: 196px;
-    height: 290px;
-    border: 1px solid #2c2c2e;
-    border-radius: 16px;
-    padding: 6px;
-    flex-direction: column;
-    background-color: #000000;
-  }
-  .keyboard-scroll-zone {
-    width: 184px;
-    height: 215px;
-    flex-direction: row;
-    overflow: scroll;
-    scroll-x: true;
-  }
-  .qwerty-board {
-    flex-direction: column;
-    width: 760px;
-    height: 205px;
-    justify-content: space-between;
-  }
+  /* Стили остаются контурными, клавиатура в самом низу, текст крупный */
+  .container { flex-direction: column; background-color: #000000; width: 212px; height: 520px; align-items: center; }
+  .page { flex-direction: column; width: 212px; height: 520px; padding: 16px 8px; align-items: center; }
+  .header-row { flex-direction: row; width: 196px; justify-content: space-between; align-items: center; margin-bottom: 16px; padding: 0 4px; }
+  .title { color: #ffffff; font-size: 24px; font-weight: bold; }
+  .count-badge { border: 1px solid #ffffff; color: #ffffff; font-size: 12px; padding: 1px 8px; border-radius: 6px; }
+  .empty-state { flex-direction: column; align-items: center; justify-content: center; width: 196px; height: 380px; margin-top: -10px; }
+  .center-plus-box { width: 80px; height: 80px; border: 1px dashed #ffffff; border-radius: 40px; align-items: center; justify-content: center; margin-bottom: 14px; }
+  .center-plus-icon { color: #ffffff; font-size: 42px; font-weight: 300; }
+  .empty-text { color: #8e8e93; font-size: 14px; text-align: center; }
+  .notes-list { width: 196px; height: 360px; flex-direction: column; }
+  .note-card { border: 1px solid #2c2c2e; border-radius: 12px; margin-bottom: 10px; width: 196px; flex-direction: row; align-items: center; justify-content: space-between; }
+  .card-body { padding: 14px 12px; width: 150px; }
+  .note-text { color: #ffffff; font-size: 18px; }
+  .delete-btn-box { width: 44px; height: 50px; align-items: center; justify-content: center; border-left: 1px solid #2c2c2e; }
+  .delete-icon { color: #ff453a; font-size: 16px; }
+  .action-bar { width: 196px; height: 46px; margin-top: 12px; }
+  .btn-outline-add { width: 196px; height: 44px; background-color: transparent; border: 1px solid #ffffff; color: #ffffff; border-radius: 10px; font-size: 15px; font-weight: bold; }
+  .btn-outline-cancel { width: 196px; height: 38px; background-color: transparent; border: 1px solid #ff453a; color: #ff453a; border-radius: 8px; font-size: 14px; margin-top: 10px; }
+  .input-preview-box { width: 196px; height: 110px; border: 1px solid #2c2c2e; border-radius: 12px; padding: 12px; margin-bottom: 14px; }
+  .preview-text { color: #ffffff; font-size: 18px; }
+  .keyboard-viewport { width: 196px; height: 290px; border: 1px solid #2c2c2e; border-radius: 16px; padding: 6px; flex-direction: column; background-color: #000000; }
+  .keyboard-scroll-zone { width: 184px; height: 215px; flex-direction: row; overflow: scroll; scroll-x: true; }
+  .qwerty-board { flex-direction: column; width: 760px; height: 205px; justify-content: space-between; }
   .kbd-row { flex-direction: row; width: 760px; }
   .kbd-row-center { flex-direction: row; width: 760px; padding-left: 12px; }
   .kbd-row-bottom { flex-direction: row; width: 760px; padding-left: 24px; }
-  
-  /* Кнопки букв: Строго прозрачный фон и тонкий белый контур */
-  .key-cell-outline {
-    width: 40px;
-    height: 62px;
-    background-color: transparent;
-    border: 1px solid #48484a;
-    color: #ffffff;
-    margin-right: 4px;
-    border-radius: 8px;
-    font-size: 22px;
-    font-weight: bold;
-    flex-shrink: 0;
-  }
-
-  /* Контурные системные клавиши */
-  .keyboard-system-row {
-    flex-direction: row;
-    width: 184px;
-    height: 52px;
-    margin-top: 8px;
-    justify-content: space-between;
-  }
-  .sys-btn-outline {
-    color: #ffffff;
-    background-color: transparent;
-    border-radius: 8px;
-    font-weight: bold;
-    font-size: 14px;
-  }
-.btn-spacebar {
-width: 90px;
-height: 46px;
-border: 1px solid #ffffff;
-font-size: 12px;
-}
-.btn-backspace {
-width: 42px;
-height: 46px;
-border: 1px solid #ff453a;
-color: #ff453a;
-font-size: 16px;
-}
-.btn-submit {
-width: 44px;
-height: 46px;
-border: 1px solid #30d158;
-color: #30d158;
-}
+  .key-cell-outline { width: 40px; height: 62px; background-color: transparent; border: 1px solid #48484a; color: #ffffff; margin-right: 4px; border-radius: 8px; font-size: 22px; font-weight: bold; flex-shrink: 0; }
+  .keyboard-system-row { flex-direction: row; width: 184px; height: 52px; margin-top: 8px; justify-content: space-between; }
+  .sys-btn-outline { color: #ffffff; background-color: transparent; border-radius: 8px; font-weight: bold; font-size: 14px; }
+  .btn-spacebar { width: 90px; height: 46px; border: 1px solid #ffffff; font-size: 12px; }
+  .btn-backspace { width: 42px; height: 46px; border: 1px solid #ff453a; color: #ff453a; font-size: 16px; }
+  .btn-submit { width: 44px; height: 46px; border: 1px solid #30d158; color: #30d158; }
+</style>
