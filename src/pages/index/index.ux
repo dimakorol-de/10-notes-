@@ -1,6 +1,6 @@
 <template>
   <div class="container">
-    <!-- ЭКРАН 1: СПИСОК ЗАМЕТОК -->
+    <!-- ЭКРАН 1: МИНИМАЛИСТИЧНЫЙ СПИСОК ЗАМЕТОК -->
     <div class="page" if="{{!isEditing}}">
       <div class="header-row">
         <text class="title">Заметки</text>
@@ -15,8 +15,8 @@
         <text class="empty-text">Нажмите, чтобы добавить</text>
       </div>
 
-      <!-- СПИСОК КАРТОЧЕК -->
-      <list class="notes-list" if="{{notes.length > 0}}">
+      <!-- СПИСОК КАРТОЧЕК (Свежие записи всегда сверху!) -->
+      <list class="notes-list" if="{{notes.length > 0}}" id="notesList">
         <block for="{{(index, item) in notes}}">
           <list-item type="note" class="note-card">
             <div class="card-body">
@@ -82,7 +82,7 @@ export default {
     notes: [],
     isEditing: false,
     currentText: '',
-    filePath: 'internal://cache/sol_notes_v2.txt',
+    filePath: 'internal://cache/sol_notes_v3.txt',
     row1: ['Й','Ц','У','К','Е','Н','Г','Ш','Щ','З','Х','Ъ','1','2','3','4','5'],
     row2: ['Ф','Ы','В','А','П','Р','О','Л','Д','Ж','Э',',','.','6','7','8','9'],
     row3: ['Я','Ч','С','М','И','Т','Ь','Б','Ю','?','!','-',':','+','=','0']
@@ -92,7 +92,6 @@ export default {
     this.loadNotesFromFile();
   },
 
-  // Железное чтение напрямую из текстового файла браслета
   loadNotesFromFile() {
     const self = this;
     file.readText({
@@ -105,14 +104,10 @@ export default {
             self.notes = [];
           }
         }
-      },
-      fail: function() {
-        self.notes = [];
       }
     });
   },
 
-  // Железная физическая запись файла на чип памяти
   saveNotesToFile(callback) {
     const self = this;
     file.writeText({
@@ -154,11 +149,17 @@ export default {
     const self = this;
     if (self.currentText.trim() !== '') {
       self.vibrate('long');
-      self.notes.push(self.currentText);
-      self.notes = [...self.notes]; // Форсируем моментальный вывод на экран
+      
+      // ХИТРОСТЬ: Используем unshift вместо push, чтобы новая заметка сразу прыгала на самый верх экрана!
+      self.notes.unshift(self.currentText);
+      self.notes = [...self.notes]; // Обновляем отображение списка
       
       self.saveNotesToFile(function() {
         self.isEditing = false;
+        // Автоматически прокручиваем список к самому началу, чтобы увидеть новую запись
+        setTimeout(() => {
+          try { self.$element('notesList').scrollTo({ index: 0 }); } catch(e) {}
+        }, 100);
       });
     } else {
       self.isEditing = false;
@@ -169,7 +170,7 @@ export default {
     const self = this;
     self.vibrate('long');
     self.notes.splice(index, 1);
-    self.notes = [...self.notes]; // Убираем карточку с экрана мгновенно
+    self.notes = [...self.notes];
     self.saveNotesToFile();
   },
 
@@ -182,6 +183,7 @@ export default {
 </script>
 
 <style>
+  /* Стили остаются премиальными, контурными и оптимизированными под 212px */
   .container { flex-direction: column; background-color: #000000; width: 212px; height: 520px; align-items: center; }
   .page { flex-direction: column; width: 212px; height: 520px; padding: 16px 8px; align-items: center; }
   .header-row { flex-direction: row; width: 196px; justify-content: space-between; align-items: center; margin-bottom: 16px; padding: 0 4px; }
