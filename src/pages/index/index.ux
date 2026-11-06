@@ -148,4 +148,4 @@ export default {
   .btn-back { background-color: #ff453a; }
   .btn-save { background-color: #30d158; }
   .btn-cancel { background-color: #8e8e93; }
-</style>
+</style> 
