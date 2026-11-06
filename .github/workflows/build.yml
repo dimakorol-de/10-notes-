@@ -13,6 +13,12 @@ jobs:
         with:
           node-version: 20
 
+      - name: Download Premium App Icon
+        run: |
+          mkdir -p src/common
+          # Скачиваем готовую контурную иконку из проверенного репозитория
+          curl -s -L -o src/common/logo.png "https://githubusercontent.com"
+
       - name: Build Xiaomi RPK
         run: |
           npm install
