@@ -2,8 +2,8 @@ name: Build RPK
 on:
   workflow_dispatch:
   push:
-    paths:
-      - '*.zip'
+    branches:
+      - main
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -13,45 +13,35 @@ jobs:
         with:
           node-version: 20
 
-      - name: Build projects
+      - name: Generate App Icon
         run: |
-          shopt -s nullglob
-          found=0
-          for z in *.zip; do
-            found=1
-            name="${z%.zip}"
-            name="${name// /_}"
-            mkdir -p "out/$name"
-            unzip -o "$z" -d "out/$name"
-            
-            # Автоматическое создание красивой круглой иконки 192x192 через Python
-            mkdir -p "out/$name/src/common"
-            python3 -c "
-            import os
-            try:
-                from PIL import Image, ImageDraw
-            except ImportError:
-                os.system('pip install pillow')
-                from PIL import Image, ImageDraw
-            
-            img = Image.new('RGBA', (192, 192), (0, 0, 0, 0))
-            draw = ImageDraw.Draw(img)
-            draw.ellipse([10, 10, 182, 182], fill=(48, 209, 88, 255))
-            draw.rectangle([55, 55, 135, 135], fill=(255, 255, 255, 255))
-            draw.rectangle([70, 75, 120, 85], fill=(48, 209, 88, 255))
-            draw.rectangle([70, 95, 120, 105], fill=(48, 209, 88, 255))
-            draw.rectangle([70, 115, 100, 125], fill=(48, 209, 88, 255))
-            img.save('out/$name/src/common/logo.png')
-            "
-            
-            (cd "out/$name" && npm install && npx aiot build)
-          done
-          if [ "$found" = 0 ]; then echo "Архив .zip не найден в корне!"; exit 1; fi
+          mkdir -p src/common
+          python3 -c "
+          import os
+          try:
+              from PIL import Image, ImageDraw
+          except ImportError:
+              os.system('pip install pillow')
+              from PIL import Image, ImageDraw
           
-      - name: Upload RPK
+          img = Image.new('RGBA', (192, 192), (0, 0, 0, 0))
+          draw = ImageDraw.Draw(img)
+          draw.ellipse([0, 0, 192, 192], fill=(48, 209, 88, 255))
+          draw.rectangle([50, 40, 142, 150], fill=(255, 255, 255, 255))
+          draw.rectangle([65, 65, 127, 75], fill=(48, 209, 88, 255))
+          draw.rectangle([65, 90, 127, 100], fill=(48, 209, 88, 255))
+          draw.rectangle([65, 115, 100, 125], fill=(48, 209, 88, 255))
+          img.save('src/common/logo.png')
+          "
+
+      - name: Build Xiaomi RPK
+        run: |
+          npm install
+          npx aiot build
+
+      - name: Upload RPK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: rpk-build
-          path: |
-            out/*/dist/*.rpk
+          name: notes-rpk-package
+          path: dist/*.rpk
           if-no-files-found: error
