@@ -13,11 +13,15 @@ jobs:
         with:
           node-version: 20
 
-      - name: Download Premium App Icon
+      - name: Generate Core Icon
         run: |
           mkdir -p src/common
-          # Скачиваем готовую контурную иконку из проверенного репозитория
-          curl -s -L -o src/common/logo.png "https://githubusercontent.com"
+          # Генерируем 1x1 прозрачный пиксель, который расширяется до валидного PNG
+          node -e "
+          const fs = require('fs');
+          const buf = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
+          fs.writeFileSync('src/common/logo.png', buf);
+          "
 
       - name: Build Xiaomi RPK
         run: |
