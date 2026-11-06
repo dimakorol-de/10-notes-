@@ -1,13 +1,13 @@
 <template>
   <div class="container">
-    <!-- ЭКРАН 1: МИНИМАЛИСТИЧНЫЙ СПИСОК ЗАМЕТОК -->
+    <!-- ЭКРАН 1: СТИЛЬНЫЙ МИНИМАЛИСТИЧНЫЙ СПИСОК ЗАМЕТОК -->
     <div class="page" if="{{!isEditing}}">
       <div class="header-row">
         <text class="title">Заметки</text>
         <text class="count-badge" if="{{notes.length > 0}}">{{notes.length}}</text>
       </div>
       
-      <!-- ОДИН БОЛЬШОЙ ПЛЮС ПО СЕРЕДИНЕ (Если пусто) -->
+      <!-- ЦЕНТРАЛЬНЫЙ КОНТУРНЫЙ ПЛЮС (Скрывается, когда есть заметки) -->
       <div class="empty-state" if="{{notes.length === 0}}" onclick="startEdit">
         <div class="center-plus-box">
           <text class="center-plus-icon">+</text>
@@ -15,7 +15,7 @@
         <text class="empty-text">Нажмите, чтобы добавить</text>
       </div>
 
-      <!-- СПИСОК КАРТОЧЕК С КОНТУРНЫМ УДАЛЕНИЕМ -->
+      <!-- СПИСОК ЗАМЕТОК С КОНТУРНЫМ УДАЛЕНИЕМ -->
       <list class="notes-list" if="{{notes.length > 0}}">
         <block for="{{(index, item) in notes}}">
           <list-item type="note" class="note-card">
@@ -29,19 +29,19 @@
         </block>
       </list>
       
-      <!-- Нижняя кнопка добавления -->
+      <!-- Контурная кнопка добавления внизу -->
       <div class="action-bar" if="{{notes.length > 0}}">
         <input type="button" class="btn-outline-add" value="+ Добавить запись" onclick="startEdit" />
       </div>
     </div>
 
-    <!-- ЭКРАН 2: ПОЛНОЦЕННАЯ ТЕЛЕФОННАЯ КЛАВИАТУРА ЙЦУКЕН -->
+    <!-- ЭКРАН 2: НИЗКАЯ КЛАВИАТУРА ЙЦУКЕН -->
     <div class="page" if="{{isEditing}}">
       <div class="input-preview-box">
         <text class="preview-text">{{currentText || 'Введите текст заметки...'}}</text>
       </div>
 
-      <!-- НИЗКАЯ КОНТУРНАЯ КЛАВИАТУРА -->
+      <!-- НИЗКАЯ КОНТУРНАЯ КЛАВИАТУРА НА ПОЛ-ЭКРАНА -->
       <div class="keyboard-viewport">
         <div class="keyboard-scroll-zone">
           <div class="qwerty-board">
@@ -66,7 +66,7 @@
           </div>
         </div>
 
-        <!-- СИСТЕМНАЯ НИЖНЯЯ ПАНЕЛЬ -->
+        <!-- СИСТЕМНЫЙ СТРОГИЙ РЯД -->
         <div class="keyboard-system-row">
           <input type="button" class="sys-btn-outline btn-backspace" value="⌫" onclick="backspace" />
           <input type="button" class="sys-btn-outline btn-spacebar" value="ПРОБЕЛ" onclick="addChar(' ')" />
@@ -97,14 +97,14 @@ export default {
     this.loadNotes();
   },
 
-  // Жесткое асинхронное чтение
   loadNotes() {
     const self = this;
     storage.get({
-      key: 'notes_storage_vela_v1',
+      key: 'sol_premium_notes_fixed',
       success: function(data) {
         if (data && data.trim() !== '') {
           try {
+            // Разворачиваем строку и форсируем обновление интерфейса
             self.notes = JSON.parse(data);
           } catch (e) {
             self.notes = [];
@@ -137,25 +137,26 @@ export default {
     }
   },
 
-  // ИСПРАВЛЕННЫЙ МЕТОД СОХРАНЕНИЯ (С жестким триггером обратного вызова)
+  // ИСПРАВЛЕННЫЙ МЕТОД: Добавлена перепривязка массива для мгновенного отображения карточки
   saveNote() {
     const self = this;
     if (self.currentText.trim() !== '') {
       self.vibrate('long');
       
-      // Сначала добавляем запись в локальный массив кода
+      // Добавляем новый текст в массив
       self.notes.push(self.currentText);
       
-      // Заставляем систему физически записать файл на браслет
+      // ХИТРОСТЬ: Клонируем массив, чтобы интерфейс Mi Band увидел изменения и сразу вывел карточку на экран
+      self.notes = [...self.notes];
+      
+      // Записываем строковое значение в память чипа
       storage.set({
-        key: 'notes_storage_vela_v1',
+        key: 'sol_premium_notes_fixed',
         value: JSON.stringify(self.notes),
         success: function() {
-          // И ТОЛЬКО ПОСЛЕ УСПЕШНОЙ ЗАПИСИ НА КРИСТАЛЛ закрываем клавиатуру
           self.isEditing = false;
         },
         fail: function() {
-          // В случае осечки принудительно выходим, сохранив массив в ОЗУ
           self.isEditing = false;
         }
       });
@@ -167,11 +168,13 @@ export default {
   deleteNote(index) {
     const self = this;
     self.vibrate('long');
-    self.notes.splice(index, 1);
     
-    // Синхронизируем удаление с памятью браслета
+    // Удаляем элемент и форсируем обновление экрана через деструктуризацию
+    self.notes.splice(index, 1);
+    self.notes = [...self.notes];
+    
     storage.set({
-      key: 'notes_storage_vela_v1',
+      key: 'sol_premium_notes_fixed',
       value: JSON.stringify(self.notes)
     });
   },
@@ -185,7 +188,7 @@ export default {
 </script>
 
 <style>
-  /* Стили остаются контурными, клавиатура в самом низу, текст крупный */
+  /* Стили остаются премиальными и контурными */
   .container { flex-direction: column; background-color: #000000; width: 212px; height: 520px; align-items: center; }
   .page { flex-direction: column; width: 212px; height: 520px; padding: 16px 8px; align-items: center; }
   .header-row { flex-direction: row; width: 196px; justify-content: space-between; align-items: center; margin-bottom: 16px; padding: 0 4px; }
@@ -205,7 +208,7 @@ export default {
   .btn-outline-add { width: 196px; height: 44px; background-color: transparent; border: 1px solid #ffffff; color: #ffffff; border-radius: 10px; font-size: 15px; font-weight: bold; }
   .btn-outline-cancel { width: 196px; height: 38px; background-color: transparent; border: 1px solid #ff453a; color: #ff453a; border-radius: 8px; font-size: 14px; margin-top: 10px; }
   .input-preview-box { width: 196px; height: 110px; border: 1px solid #2c2c2e; border-radius: 12px; padding: 12px; margin-bottom: 14px; }
-  .preview-text { color: #ffffff; font-size: 18px; }
+  .preview-text { color: #ffffff; font-size: 20px; }
   .keyboard-viewport { width: 196px; height: 290px; border: 1px solid #2c2c2e; border-radius: 16px; padding: 6px; flex-direction: column; background-color: #000000; }
   .keyboard-scroll-zone { width: 184px; height: 215px; flex-direction: row; overflow: scroll; scroll-x: true; }
   .qwerty-board { flex-direction: column; width: 760px; height: 205px; justify-content: space-between; }
