@@ -13,22 +13,18 @@
       <input type="button" class="btn-add" value="+ Новая" onclick="startEdit" />
     </div>
 
-    <!-- ЭКРАН 2: Ввод текста (Клавиатура) -->
+    <!-- ЭКРАН 2: Ввод текста (Оптимизированная клавиатура) -->
     <div class="page" if="{{isEditing}}">
       <div class="input-preview">
         <text class="preview-text">{{currentText || 'Начните ввод...'}}</text>
       </div>
 
-      <!-- Прокручиваемая русская лента букв -->
-      <tabs class="keyboard-scroll" index="0">
-        <tab-content class="kbd-container">
-          <div class="kbd-row">
-            <block for="{{char in keyboardChars}}">
-              <input type="button" class="key-btn" value="{{char}}" onclick="addChar(char)" />
-            </block>
-          </div>
-        </tab-content>
-      </tabs>
+      <!-- ЛЕГКАЯ ГОРИЗОНТАЛЬНАЯ ЛЕНТА (Мотается пальцем без сбоев) -->
+      <div class="keyboard-scroll-container">
+        <block for="{{char in keyboardChars}}">
+          <input type="button" class="key-btn" value="{{char}}" onclick="addChar(char)" />
+        </block>
+      </div>
 
       <!-- Управляющие кнопки -->
       <div class="controls-row">
@@ -49,11 +45,11 @@ export default {
     notes: [],
     isEditing: false,
     currentText: '',
-    // Исключительно русская клавиатура-лента
+    // Только русская раскладка, цифры и знаки
     keyboardChars: [
       'А','Б','В','Г','Д','Е','Ё','Ж','З','И','Й','К','Л','М','Н','О','П','Р','С','Т','У','Ф','Х','Ц','Ч','Ш','Щ','Ъ','Ы','Ь','Э','Ю','Я',
       'а','б','в','г','д','е','ё','ж','з','и','й','к','л','м','н','о','п','р','с','т','у','ф','х','ц','ч','ш','щ','ъ','ы','ь','э','ю','я',
-      '1','2','3','4','5','6','7','8','9','0','.',',','?','!','-','+','=',')','(',' '
+      '1','2','3','4','5','6','7','8','9','0','.',',','?','!','-','+',' '
     ]
   },
 
@@ -129,23 +125,98 @@ export default {
 </script>
 
 <style>
-  /* Стили остаются прежними для идеального отображения на экране 212x520 */
-  .container { flex-direction: column; background-color: #000000; width: 212px; height: 520px; align-items: center; }
-  .page { flex-direction: column; width: 212px; height: 520px; padding: 20px 10px; align-items: center; }
-  .title { color: #ffffff; font-size: 24px; margin-bottom: 15px; font-weight: bold; }
-  .notes-list { width: 190px; height: 380px; flex-direction: column; }
-  .note-item { background-color: #1c1c1e; border-radius: 10px; padding: 12px; margin-bottom: 8px; width: 190px; }
-  .note-text { color: #ffffff; font-size: 18px; }
-  .btn-add { width: 180px; height: 45px; background-color: #30d158; color: #ffffff; border-radius: 20px; font-size: 18px; margin-top: 10px; }
-  .input-preview { width: 192px; height: 120px; background-color: #1c1c1e; border-radius: 10px; padding: 8px; margin-bottom: 15px; }
-  .preview-text { color: #ffffff; font-size: 18px; }
-  .keyboard-scroll { width: 192px; height: 80px; background-color: #2c2c2e; border-radius: 10px; margin-bottom: 15px; }
-  .kbd-container { width: 2400px; height: 80px; }
-  .kbd-row { flex-direction: row; height: 80px; align-items: center; padding: 0px 10px; }
-  .key-btn { width: 45px; height: 60px; background-color: #3a3a3c; color: #ffffff; margin-right: 6px; border-radius: 6px; font-size: 22px; }
-  .controls-row { flex-direction: row; width: 192px; justify-content: space-between; }
-  .control-btn { width: 58px; height: 45px; color: #ffffff; border-radius: 10px; font-size: 18px; }
+  .container {
+    flex-direction: column;
+    background-color: #000000;
+    width: 212px;
+    height: 520px;
+    align-items: center;
+  }
+  .page {
+    flex-direction: column;
+    width: 212px;
+    height: 520px;
+    padding: 20px 10px;
+    align-items: center;
+  }
+  .title {
+    color: #ffffff;
+    font-size: 24px;
+    margin-bottom: 15px;
+    font-weight: bold;
+  }
+  .notes-list {
+    width: 190px;
+    height: 380px;
+    flex-direction: column;
+  }
+  .note-item {
+    background-color: #1c1c1e;
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 8px;
+    width: 190px;
+  }
+  .note-text {
+    color: #ffffff;
+    font-size: 18px;
+  }
+  .btn-add {
+    width: 180px;
+    height: 45px;
+    background-color: #30d158;
+    color: #ffffff;
+    border-radius: 20px;
+    font-size: 18px;
+    margin-top: 10px;
+  }
+  .input-preview {
+    width: 192px;
+    height: 120px;
+    background-color: #1c1c1e;
+    border-radius: 10px;
+    padding: 8px;
+    margin-bottom: 15px;
+  }
+  .preview-text {
+    color: #ffffff;
+    font-size: 18px;
+  }
+  /* Горизонтальная прокрутка через div без использования tabs */
+  .keyboard-scroll-container {
+    width: 192px;
+    height: 80px;
+    background-color: #2c2c2e;
+    border-radius: 10px;
+    margin-bottom: 15px;
+    flex-direction: row;
+    overflow: scroll;
+    scroll-x: true;
+    padding: 10px;
+  }
+  .key-btn {
+    width: 45px;
+    height: 60px;
+    background-color: #3a3a3c;
+    color: #ffffff;
+    margin-right: 6px;
+    border-radius: 6px;
+    font-size: 22px;
+    flex-shrink: 0;
+  }
+  .controls-row {
+    flex-direction: row;
+    width: 192px;
+    justify-content: space-between;
+  }
+  .control-btn {
+    width: 58px;
+    height: 45px;
+    color: #ffffff;
+    border-radius: 10px;
+    font-size: 18px;
+  }
   .btn-back { background-color: #ff453a; }
   .btn-save { background-color: #30d158; }
   .btn-cancel { background-color: #8e8e93; }
-</style> 
+</style>
